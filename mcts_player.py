@@ -3,7 +3,7 @@ import socket
 import pickle
 import random
 import math
-import time  # Import time module for the timer
+import time 
 from reversi import reversi
 
 def clone_game(game):
@@ -21,11 +21,9 @@ def clone_game(game):
 
 def get_valid_moves(game, turn):
     moves = []
-    # Try every board position
     for i in range(8):
         for j in range(8):
             if game.board[i, j] == 0:
-                # Use commit=False so the board is not modified.
                 if game.step(i, j, turn, commit=False) > 0:
                     moves.append((i, j))
     if not moves:
@@ -40,28 +38,24 @@ def evaluate(game, player):
     """
     return game.white_count - game.black_count if player == 1 else game.black_count - game.white_count
 
-# --- MCTS Implementation ---
-
 class MCTSNode:
     def __init__(self, game, parent=None, move=None):
-        self.game = game               # game state at this node
-        self.parent = parent           # parent node in the tree
-        self.move = move               # move that led to this game state
-        self.children = []             # list of child nodes
-        self.wins = 0                  # cumulative reward
-        self.visits = 0                # number of times node was visited
-        # Untried moves for this state (for the current player's turn)
+        self.game = game               
+        self.parent = parent           
+        self.move = move               
+        self.children = []            
+        self.wins = 0                 
+        self.visits = 0                
         self.untried_moves = get_valid_moves(game, game.turn)
     
     def select_child(self):
         """
         Select a child node using the UCT (Upper Confidence bounds applied to Trees) formula.
         """
-        C = 1.41  # Exploration constant
+        C = 1.41  
         best_score = -float('inf')
         best_child = None
         for child in self.children:
-            # UCT formula: (win rate) + C * sqrt( log(parent.visits)/child.visits )
             score = child.wins / child.visits + C * math.sqrt(math.log(self.visits) / child.visits)
             if score > best_score:
                 best_score = score
@@ -72,10 +66,10 @@ class MCTSNode:
         """
         Expand by taking one of the untried moves.
         """
-        move = self.untried_moves.pop()  # Choose and remove one untried move
+        move = self.untried_moves.pop() 
         new_game = clone_game(self.game)
         if move == (-1, -1):
-            new_game.turn = -new_game.turn  # simulate pass
+            new_game.turn = -new_game.turn
         else:
             new_game.step(move[0], move[1], new_game.turn, commit=True)
             new_game.turn = -new_game.turn
@@ -96,13 +90,12 @@ def rollout(game, player):
     Return a reward: 1 for win, 0 for loss, 0.5 for draw (from the perspective of 'player').
     """
     current_game = clone_game(game)
-    pass_count = 0  # count consecutive passes
+    pass_count = 0 
     while True:
         moves = get_valid_moves(current_game, current_game.turn)
-        # If only a pass move is available, count it.
         if moves == [(-1, -1)]:
             pass_count += 1
-            if pass_count == 2:  # both players passed -> game over
+            if pass_count == 2: 
                 break
             current_game.turn = -current_game.turn
             continue
@@ -114,8 +107,8 @@ def rollout(game, player):
             else:
                 current_game.step(move[0], move[1], current_game.turn, commit=True)
                 current_game.turn = -current_game.turn
-    # Use the provided evaluation function to decide the outcome.
     eval_value = evaluate(current_game, player)
+
     if eval_value > 0:
         return 1   # win
     elif eval_value < 0:
@@ -139,20 +132,19 @@ def mcts(root_game, time_limit, player):
     start_time = time.time()  # Start the timer
     while time.time() - start_time < time_limit:
         node = root_node
-        # --- Selection ---
-        # Traverse the tree until reaching a node with untried moves or no children.
+        # Selection
         while node.untried_moves == [] and node.children != []:
             node = node.select_child()
-        # --- Expansion ---
+        # Expansion
         if node.untried_moves:
             node = node.expand()
-        # --- Simulation (Rollout) ---
+        # Simulation (Rollout
         result = rollout(node.game, player)
-        # --- Backpropagation ---
+        # Backpropagation
         while node is not None:
             node.update(result)
             node = node.parent
-    # After the time limit, choose the move of the most-visited child.
+
     best_child = max(root_node.children, key=lambda n: n.visits) if root_node.children else None
     if best_child is not None:
         print("MCTS stats: visits =", best_child.visits, "wins =", best_child.wins)
@@ -160,26 +152,18 @@ def mcts(root_game, time_limit, player):
     else:
         return (-1, -1)
 
-# --- Main game loop (using MCTS instead of alpha-beta) ---
-
 def main():
-    # Connect to the server (make sure the host/port match your server settings)
     game_socket = socket.socket()
     game_socket.connect(('127.0.0.1', 33333))
     
-    # Create a local game instance for simulation.
     game = reversi()
     
-    # Set the time limit for MCTS in seconds.
     TIME_LIMIT = 4.9
 
     while True:
-        # Receive a play request from the server.
-        # The server sends a pickled list: [turn, board]
         data = game_socket.recv(4096)
         turn, board = pickle.loads(data)
 
-        # A turn value of 0 indicates that the game is over.
         if turn == 0:
             game_socket.close()
             return
@@ -187,18 +171,15 @@ def main():
         print("Current turn:", turn)
         print("Board state:\n", board)
 
-        # Update our local game state.
         game.board = board
         game.turn = turn
 
-        # Run MCTS search from the current position with a 4.9-second time limit.
         move = mcts(game, TIME_LIMIT, turn)
         if move is None:
-            move = (-1, -1)  # if no move is found, pass.
+            move = (-1, -1)  
 
         print("MCTS selected move:", move)
 
-        # Send the selected move back to the server.
         game_socket.send(pickle.dumps(move))
 
 if __name__ == '__main__':

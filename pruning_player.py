@@ -8,7 +8,6 @@ from reversi import reversi
 # The keys will be (board_state, turn, depth, player)
 cache = {}
 
-# Custom exception for timeouts.
 class Timeout(Exception):
     pass
 
@@ -33,13 +32,13 @@ def get_valid_moves(game, turn):
     
     If no move is legal, return [(-1, -1)] to denote a pass.
     """
-    moves = []  # list will hold tuples: (flip_count, (x, y))
+    moves = []  
     for i in range(8):
         for j in range(8):
             if game.board[i, j] == 0:
                 flipped = game.step(i, j, turn, commit=False)
                 if flipped > 0:
-                    # Binary insertion so that moves are sorted in descending order.
+                    # Binary insertion sort
                     low, high = 0, len(moves)
                     while low < high:
                         mid = (low + high) // 2
@@ -49,8 +48,7 @@ def get_valid_moves(game, turn):
                             low = mid + 1
                     moves.insert(low, (flipped, (i, j)))
     if not moves:
-        moves.append((0, (-1, -1)))  # No legal moves; must pass.
-    # Return only the move coordinates.
+        moves.append((0, (-1, -1))) 
     return [move[1] for move in moves]
 
 def evaluate(game, player):
@@ -70,8 +68,6 @@ def alphabeta(game, depth, alpha, beta, player, start_time, time_limit):
     if time.time() - start_time > time_limit:
         raise Timeout()
 
-    # Create a hashable key for the current state.
-    # Convert the numpy board into a tuple of tuples.
     board_key = tuple(map(tuple, game.board))
     key = (board_key, game.turn, depth, player)
     if key in cache:
@@ -84,7 +80,6 @@ def alphabeta(game, depth, alpha, beta, player, start_time, time_limit):
 
     moves = get_valid_moves(game, game.turn)
 
-    # If the only available move is to pass...
     if moves == [(-1, -1)]:
         new_game = clone_game(game)
         new_game.turn = -new_game.turn  # simulate pass
@@ -145,13 +140,12 @@ def iterative_deepening(game, player, time_limit):
     Returns the best evaluation score and move found so far.
     """
     global cache
-    cache.clear()  # Clear the cache before starting a new move search.
+    cache.clear() 
     start_time = time.time()
     best_move = (-1, -1)
     best_score = None
     depth = 1
 
-    # Keep searching with increasing depth until time runs out.
     while True:
         try:
             score, move = alphabeta(game, depth, -float('inf'), float('inf'),
@@ -168,22 +162,17 @@ def iterative_deepening(game, player, time_limit):
     return best_score, best_move
 
 def main():
-    # Connect to the server (make sure the host/port match your server settings)
     game_socket = socket.socket()
     game_socket.connect(('127.0.0.1', 33333))
     
-    # Create a local game instance for simulation.
     game = reversi()
 
-    TIME_LIMIT = 4.9  # Maximum search time in seconds.
+    TIME_LIMIT = 4.9  
 
     while True:
-        # Receive a play request from the server.
-        # The server sends a pickled list: [turn, board]
         data = game_socket.recv(4096)
         turn, board = pickle.loads(data)
 
-        # A turn value of 0 indicates that the game is over.
         if turn == 0:
             game_socket.close()
             return
@@ -191,20 +180,17 @@ def main():
         print("Current turn:", turn)
         print("Board state:\n", board)
 
-        # Update our local game state.
         game.board = board
         game.turn = turn
 
-        # Run iterative deepening with a time limit.
         start_search_time = time.time()
         score, move = iterative_deepening(game, turn, TIME_LIMIT)
         if move is None:
-            move = (-1, -1)  # if no move is found, pass.
+            move = (-1, -1)  
 
         elapsed = time.time() - start_search_time
         print("AlphaBeta selected move:", move, "with evaluation score:", score, f"(searched for {elapsed:.2f} seconds)")
 
-        # Send the selected move back to the server.
         game_socket.send(pickle.dumps(move))
 
 if __name__ == '__main__':
