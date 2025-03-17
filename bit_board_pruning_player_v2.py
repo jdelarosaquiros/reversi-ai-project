@@ -66,12 +66,18 @@ def evaluate_board(white_bits, black_bits, player, postion_weights):
         postion_score = -postion_score
     
     if piece_total < 20:
-        piece_total = 1
+        position_importance = 1.00
+        piece_importance = 0.00
     elif piece_total < 50:
-        piece_total = .75
+        position_importance = 0.75
+        piece_importance = 0.25
     else:
-        piece_total = 0
+        position_importance = 0.00
+        piece_importance = 1.00
 
+    # total_piece_weight = piece_total / 64
+    # position_importance = 1 - total_piece_weight
+    # piece_importance = 1 - position_importance
     
     return piece_importance * piece_diff + position_importance * postion_score
 
