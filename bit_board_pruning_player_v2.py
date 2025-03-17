@@ -195,6 +195,7 @@ def main():
     game_socket.connect(('127.0.0.1', 33333))
     game = ReversiBitBoard()
     TIME_LIMIT = 4.9
+    first_move = True
 
     while True:
         data = game_socket.recv(4096)
@@ -213,10 +214,14 @@ def main():
         game.set_board_from_numpy(board_np)
         game.turn = turn
 
-        # Use the iterative deepening search with time limit.
         start_search_time = time.time()
-        score, move, search_depth = iterative_deepening(
-            game.white_bits, game.black_bits, turn, turn, TIME_LIMIT, directions, postion_weights)
+        
+        if first_move:
+            first_move = False
+            score, move, search_depth = iterative_deepening(game.white_bits, game.black_bits, turn, turn, 2, directions, postion_weights)
+        else:
+            score, move, search_depth = iterative_deepening(game.white_bits, game.black_bits, turn, turn, TIME_LIMIT, directions, postion_weights)
+
         if move is None:
             move = (-1, -1)
         elapsed = time.time() - start_search_time
