@@ -43,6 +43,7 @@ def evaluate_board(white_bits, black_bits, player, postion_weights):
     Returns:
         float: Evaluation score.
     """
+    piece_total = 0
     piece_diff = 0
     postion_score = 0.0
     for x in range(8):
@@ -50,9 +51,11 @@ def evaluate_board(white_bits, black_bits, player, postion_weights):
             idx = x * 8 + y
             bit = 1 << idx
             if white_bits & bit:
+                piece_total += 1
                 piece_diff += 1
                 postion_score += postion_weights[x, y]
             elif black_bits & bit:
+                piece_total += 1
                 piece_diff -= 1
                 postion_score -= postion_weights[x, y]
 
@@ -61,6 +64,14 @@ def evaluate_board(white_bits, black_bits, player, postion_weights):
     if player == -1:
         piece_diff = -piece_diff
         postion_score = -postion_score
+    
+    if piece_total < 20:
+        piece_total = 1
+    elif piece_total < 50:
+        piece_total = .75
+    else:
+        piece_total = 0
+
     
     return piece_importance * piece_diff + position_importance * postion_score
 
