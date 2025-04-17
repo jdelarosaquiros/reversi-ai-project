@@ -104,6 +104,13 @@ def alphabeta(game, depth, alpha, beta, player, start_time, time_limit):
                 new_game.step(move[0], move[1], new_game.turn, commit=True)
                 new_game.turn = -new_game.turn
             eval_score, _ = alphabeta(new_game, depth - 1, alpha, beta, player, start_time, time_limit)
+            # Update the eval_score based on position of piece placed
+            # set super high score if space is corner
+            if move in [(0, 0), (7, 7), (0, 7), (7, 0)]:
+                eval_score += 2000000000000
+            # set super low score if space is right next to a corner
+            if move in [(0, 1), (1, 0), (1, 1), (7, 1), (6, 1), (6,0), (0,6), (1,6), (1,7), (7,6), (6,6), (6,7)]:
+                eval_score -= 1000000000000
             if eval_score > max_eval:
                 max_eval = eval_score
                 best_move = move
@@ -124,6 +131,14 @@ def alphabeta(game, depth, alpha, beta, player, start_time, time_limit):
                 new_game.step(move[0], move[1], new_game.turn, commit=True)
                 new_game.turn = -new_game.turn
             eval_score, _ = alphabeta(new_game, depth - 1, alpha, beta, player, start_time, time_limit)
+            # Update the eval_score based on position of piece placed
+            # Signs are OPPOSITE because this is other opponent player
+            # set super low score if space is corner
+            if move in [(0, 0), (7, 7), (0, 7), (7, 0)]:
+                eval_score -= 2000000000000
+            # set super high score if space is right next to a corner
+            if move in [(0, 1), (1, 0), (1, 1), (7, 1), (6, 1), (6,0), (0,6), (1,6), (1,7), (7,6), (6,6), (6,7)]:
+                eval_score += 1000000000000
             if eval_score < min_eval:
                 min_eval = eval_score
                 best_move = move
@@ -134,10 +149,11 @@ def alphabeta(game, depth, alpha, beta, player, start_time, time_limit):
         cache[key] = result
         return result
 
-def iterative_deepening(game, player, time_limit):
+
+def iterative_deepening(game: reversi, player: int, time_limit: float):
     """
     Iteratively deepen the search until the time limit is reached.
-    Returns the best evaluation score and move found so far.
+    Returns the best evaluation score, best move, and the maximum depth reached.
     """
     global cache
     cache.clear() 
@@ -148,18 +164,29 @@ def iterative_deepening(game, player, time_limit):
 
     while True:
         try:
-            score, move = alphabeta(game, depth, -float('inf'), float('inf'),
-                                      player, start_time, time_limit)
+            score, move = alphabeta(
+                game, depth,
+                -float('inf'), float('inf'),
+                player,
+                start_time,
+                time_limit
+            )
             best_score = score
             best_move = move
             depth += 1
+
         except Timeout:
-            print("Max Depth Reached:", depth)
+            print("Max Depth Reached (due to timeout):", depth)
             break
-        # Also check time at the end of an iteration.
+
+        # Also check time at the end of each iteration.
         if time.time() - start_time >= time_limit:
             break
-    return best_score, best_move
+
+    # Because 'depth' was incremented after a successful search,
+    # the last fully-completed depth is 'depth - 1'.
+    final_depth = depth - 1
+    return best_score, best_move, final_depth
 
 def main():
     game_socket = socket.socket()
@@ -184,12 +211,17 @@ def main():
         game.turn = turn
 
         start_search_time = time.time()
-        score, move = iterative_deepening(game, turn, TIME_LIMIT)
+        score, move, search_depth = iterative_deepening(game, turn, TIME_LIMIT)
         if move is None:
             move = (-1, -1)  
 
         elapsed = time.time() - start_search_time
-        print("AlphaBeta selected move:", move, "with evaluation score:", score, f"(searched for {elapsed:.2f} seconds)")
+        print("AlphaBeta selected move:", move,
+              "with evaluation score:", score,
+              f"(searched for {elapsed:.2f} seconds, depth={search_depth})")
+
+        # You can also explicitly print something like:
+        print(f"Searched up to {search_depth} moves (plies) ahead.")
 
         game_socket.send(pickle.dumps(move))
 
