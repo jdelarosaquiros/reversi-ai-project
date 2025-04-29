@@ -13,7 +13,7 @@ def main():
     
     g = OthelloGame(8)
     nnet = NNet(g)
-    nnet.load_checkpoint('./alpha_zero_general/pretrained_models/othello/pytorch/','8x8_100checkpoints_best.pth.tar')
+    nnet.load_checkpoint('./alpha_zero_general/pretrained_models/othello/pytorch/','8x8_rev_best.pth.tar')
     args1 = dotdict({'numMCTSSims': 100, 'cpuct':1.0})
     mcts = MCTS(g, nnet, args1)
 
@@ -39,7 +39,7 @@ def main():
         
         canon_board = g.getCanonicalForm(game.board, turn)
         probs = mcts.getActionProb(canon_board, temp=0) # turn???????
-        # print(np.argmax(probs))
+        print(np.argmax(probs))
         best_move = np.argmax(probs)
         x, y = (int(best_move/8), best_move%8)
         
