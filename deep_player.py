@@ -43,6 +43,11 @@ def main():
         best_move = np.argmax(probs)
         x, y = (int(best_move/8), best_move%8)
         
+        valids = g.getValidMoves(canon_board, 1)
+
+        if valids[best_move] == 0:
+            x, y = -1, -1
+        
         #Send your move to the server. Send (x,y) = (-1,-1) to tell the server you have no hand to play
         game_socket.send(pickle.dumps([x,y]))
         
